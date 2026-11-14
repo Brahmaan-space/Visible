@@ -4,7 +4,7 @@ import { isOwn, sourceFamily, SOURCE_KIND } from '../score.js';
 // Assumed chance an action gets Art of Living into the top results for a query it targets.
 // These are planning assumptions, not measurements; the re-test replaces them with real numbers.
 export const ASSUMPTIONS = {
-  listing: 0.35, directory: 0.15, civic: 0.3, campus: 0.3, press: 0.25, cityPage: 0.15, topicPage: 0.2, hygiene: 0.05,
+  listing: 0.35, directory: 0.15, civic: 0.3, campus: 0.3, press: 0.25, cityPage: 0.3, topicPage: 0.2, hygiene: 0.05,
 };
 
 const EFFORT = { listing: 1, directory: 1, civic: 2, campus: 2, press: 3, cityPage: 2, topicPage: 2, hygiene: 1 };
@@ -28,7 +28,7 @@ export function buildPlan(run) {
   const actions = [];
   for (const [family, ids] of Object.entries(famQueries)) {
     const kind = SOURCE_KIND[family];
-    if (!kind || kind === 'competitor' || ids.length < 1) continue;
+    if (!kind || kind === 'competitor' || family === 'Retreat Guru' || ids.length < 1) continue; // already on Retreat Guru
     const verb = {
       listing: /Retreat/.test(family) ? `List Art of Living Part 2 (silence retreat) on ${family}` : `List the intro workshop and Part 1 on ${family}, per city`,
       directory: `Claim and complete the ${family} profile for each centre`,
@@ -102,9 +102,11 @@ function plainWords(a, total) {
   const retreat = /Retreat/.test(f ?? '');
   const by = {
     listing: {
-      plainTitle: retreat ? `Post our silence retreat on ${f}` : `Post our upcoming sessions on ${f}`,
+      plainTitle: retreat ? `List all our retreats on ${f}, not just one` : `Post our upcoming sessions on ${f}`,
       who: 'Any volunteer', time: retreat ? 'About 30 minutes' : 'About 30 minutes per city',
-      why: `When people ask about meditation, ${f} comes up for ${n} of our ${total} test questions. We are not on it yet.`,
+      why: retreat
+        ? `${f} comes up for ${n} of our ${total} questions. The Canada Centre has one retreat there; most of our programs are missing.`
+        : `When people ask about meditation, ${f} comes up for ${n} of our ${total} test questions. Our sessions are not there yet.`,
       steps: [`Copy the ready-made ${f} text from "Ready-made materials"`, `Sign in to ${f} with the centre's account (or create a free one)`, 'Add the real date, place and registration link, then publish', 'Repeat for each new session'],
     },
     directory: {
@@ -128,9 +130,9 @@ function plainWords(a, total) {
       steps: ['Find the writer of their latest meditation or wellness list', 'Invite them to a free intro session', 'Share a short fact sheet and the centre link'],
     },
     cityPage: {
-      plainTitle: 'Give each centre page a clear title and a "common questions" section', who: 'Website team', time: 'Half a day',
-      why: `${n} of ${total} questions mention a city, but our centre pages never come up. The new pages are already written.`,
-      steps: ['Open the centre page previews in "Ready-made materials"', 'Copy the title, summary and questions onto each real centre page', 'Ask a local teacher to check the answers'],
+      plainTitle: 'Make sure every city we teach in has its own centre page', who: 'Website team', time: 'Half a day',
+      why: `This is proven: in Markham, Richmond Hill, Kitchener-Waterloo and Sherbrooke, where we have a centre page, we came up. In most other cities there is no page, so we never do.`,
+      steps: ['List every city where a teacher runs courses', 'Create a centre page for each one, using the previews in "Ready-made materials"', 'Use the city name in the page title, like "Meditation & Breathwork Classes in Calgary"', 'Ask a local teacher to check the details'],
     },
     topicPage: {
       plainTitle: a.title.replace(/^Publish a "(.*)" answer page$/, 'Write a page about "$1"'), who: 'Content volunteer + website team', time: '2 to 3 hours',

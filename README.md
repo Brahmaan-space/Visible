@@ -8,16 +8,16 @@ When someone in Canada asks an AI assistant "where can I learn meditation in Tor
 
 | Piece | Status |
 |---|---|
-| Baseline audit (20 questions, 17 unbranded + 3 branded) | **Real.** Run on 2026-11-14 through a live web search engine, the retrieval layer AI assistants use for grounded answers. Result: **0 of 17** unbranded questions surface Art of Living; **3 of 3** branded ones do. |
+| Baseline audit (54 questions: 49 everyday + 5 using our name; 31 cities, every province, 7 in French) | **Real.** Run on 2026-11-14 through a live web search engine, the retrieval layer AI assistants use for grounded answers. Result: **8 of 49** everyday questions surface Art of Living; **5 of 5** branded ones do. Every hit was in a city with its own centre page or matched a retreat listing on a booking site. |
 | Program catalog (15 programs, 5 centres) | **Real** names, levels and URLs from artofliving.org/ca-en/programs. Descriptions are short paraphrases. Dates and prices were not on the page. |
 | Site check (meta tags, llms.txt, robots.txt, junk indexed pages) | **Real**, fetched 2026-11-14. |
 | Projected share of voice in the lift plan | **Simulated.** Uses stated planning assumptions (e.g. a listing gets you into 35% of the questions where that site ranks). Marked SIMULATED in the UI. |
-| FAQ answers | **Drafts** generated from the catalog. A volunteer confirms them before publishing. |
+| FAQ answers and listings (English and French) | **Drafts** generated from the catalog. A teacher confirms them before publishing. |
 | Live re-test | Real when `ANTHROPIC_API_KEY` is set: asks Claude with web search, located in Canada, and saves the run. |
 
 ## The strategy for raising the score
 
-The audit shows AI answers for these questions are built from **listing sites** (Eventbrite in 7 of 17, Coursetakers 6, BookRetreats 5, Meetup 4), competitors (Shambhala, Sri Chinmoy) and a few press round-ups. artofliving.org never appears for an unbranded question, even though centre pages exist.
+The audit shows AI answers for these questions are built from **listing sites** (Eventbrite in 24 of 49, Meetup 17, BookRetreats 15, Coursetakers 12) and competitors (Shambhala, Sri Chinmoy). Art of Living came up only where it already has a city centre page (Markham, Richmond Hill, Kitchener-Waterloo, Sherbrooke) or a retreat listing (Retreat Guru). That is direct evidence the two main levers work.
 
 So the plan, ranked by questions reached ÷ effort:
 1. **Be where AI already reads.** Post the intro workshop and Part 1 on Eventbrite, Coursetakers, Meetup per city, and Part 2 on BookRetreats. Visible generates the listing copy.
@@ -46,7 +46,7 @@ Endpoints: `/api/programs?topic=anxiety&city=Toronto`, `/api/programs/:id`, `/fe
 
 ## Demo script (3 minutes)
 
-1. **Audit tab:** 0% on everyday questions, 100% on branded ones. "People who already know us find us. Nobody else does." Show Eventbrite and listing sites taking the space.
+1. **How we're doing:** 8 of 49 everyday questions vs 5 of 5 branded. Show the province map, then "where we did come up, and why": only where we have a centre page or a listing.
 2. **Lift plan tab:** tick actions and watch the simulated score move; explain it is evidence-ranked from the audit.
 3. **Fixes tab:** open the Toronto city page preview, the FAQ schema, and copy one Eventbrite listing.
 4. **AI feed tab:** search "anxiety" + "Toronto"; then show the same tool called from Claude through MCP.

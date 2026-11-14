@@ -8,6 +8,7 @@ import { scoreRun, isOwn, sourceFamily } from './src/score.js';
 import { buildPlan, projectionCurve, ASSUMPTIONS } from './src/lift/plan.js';
 import { generateAll, cityLandingHtml, llmsTxt } from './src/fixes/generate.js';
 import { listingKit } from './src/fixes/listings.js';
+import { faqFr, listingsFr } from './src/fixes/french.js';
 import { findPrograms, getProgram } from './src/feed/search.js';
 import { buildMcpServer } from './src/feed/mcp.js';
 import { runAudit } from './src/audit/run.js';
@@ -41,7 +42,8 @@ export function state() {
     projection: projectionCurve(baseline, plan),
     assumptions: ASSUMPTIONS,
     fixes: generateAll(catalog),
-    listings: listingKit({ catalog, families, cities }),
+    listings: [...listingKit({ catalog, families, cities }), ...listingsFr({ catalog, cities: ['Montréal', 'Québec', 'Sherbrooke'] })],
+    faqFr: faqFr({ programs: catalog.programs }),
     catalog,
     auditJob,
     liveAuditAvailable: !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN),

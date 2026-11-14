@@ -1,5 +1,5 @@
 // Share-of-voice scoring for an audit run.
-export const OWN_DOMAINS = ['artofliving.org', 'artoflivingcanadacentre.org', 'skycampuscanada.org'];
+export const OWN_DOMAINS = ['artofliving.org', 'artoflivingcanadacentre.org', 'skycampuscanada.org', 'artofliving.secure.retreat.guru'];
 
 export const isOwn = (domain) => OWN_DOMAINS.some((d) => domain === d || domain.endsWith('.' + d));
 
@@ -12,7 +12,7 @@ const FAMILIES = [
   ['blogto.com', 'blogTO'], ['nowtoronto.com', 'NOW Toronto'], ['straight.com', 'Georgia Straight'],
   ['timeout.com', 'Time Out'], ['montreal.ca', 'Ville de Montréal events'], ['calgary.ca', 'City of Calgary rec'],
   ['happeningnext.com', 'HappeningNext'], ['luma.com', 'Luma'], ['superprof.ca', 'Superprof'], ['apprentus.ca', 'Apprentus'],
-  ['othership.us', 'Othership'], ['globalnews.ca', 'Global News'], ['utoronto.ca', 'University of Toronto'],
+  ['othership.us', 'Othership'], ['nobleprog.ca', 'NobleProg'], ['tickettailor.com', 'Ticket Tailor'], ['allevents.in', 'AllEvents'], ['bilginc.com', 'Bilginc'], ['globalnews.ca', 'Global News'], ['utoronto.ca', 'University of Toronto'],
   ['sfu.ca', 'Simon Fraser University'], ['ubc.ca', 'UBC'], ['artofliving.org', 'Art of Living'],
 ];
 
@@ -28,7 +28,7 @@ export const SOURCE_KIND = {
   HappeningNext: 'listing', 'Ville de Montréal events': 'civic', 'City of Calgary rec': 'civic',
   blogTO: 'press', 'NOW Toronto': 'press', 'Georgia Straight': 'press', 'Time Out': 'press', 'Global News': 'press',
   'University of Toronto': 'campus', 'Simon Fraser University': 'campus', UBC: 'campus',
-  Shambhala: 'competitor', 'Sri Chinmoy Centre': 'competitor', 'The Knowledge Academy': 'competitor', Othership: 'competitor',
+  Shambhala: 'competitor', NobleProg: 'competitor', Bilginc: 'competitor', 'Ticket Tailor': 'listing', AllEvents: 'listing', 'Sri Chinmoy Centre': 'competitor', 'The Knowledge Academy': 'competitor', Othership: 'competitor',
 };
 
 export function scoreRun(run) {
@@ -65,6 +65,7 @@ export function scoreRun(run) {
     unbrandedTotal: unbranded.length,
     unbrandedMentioned: unbranded.filter((q) => q.mentioned).length,
     byCity: group('city'),
+    byProvince: group('province'),
     byIntent: group('intent'),
     topSources,
   };

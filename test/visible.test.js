@@ -14,11 +14,12 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 const catalog = loadCatalog();
 const baseline = listRuns().find((r) => r.runId === 'baseline-2026-11-14');
 
-test('baseline scores match the real audit: 0 of 17 unbranded, 3 of 3 branded', () => {
+test('baseline scores match the real audit: 8 of 49 unbranded, 5 of 5 branded', () => {
   const s = scoreRun(baseline);
-  assert.equal(s.unbrandedTotal, 17);
-  assert.equal(s.shareOfVoice, 0);
+  assert.equal(s.unbrandedTotal, 49);
+  assert.equal(s.unbrandedMentioned, 8);
   assert.equal(s.brandedRecall, 100);
+  assert.equal(s.byProvince.ON.total > 0, true);
   assert.equal(s.topSources[0].name, 'Eventbrite');
 });
 
@@ -34,7 +35,7 @@ test('plan ranks listing sites first and projection grows with more actions', ()
   const one = projectShareOfVoice(baseline, plan.actions.slice(0, 1));
   const all = projectShareOfVoice(baseline, plan.actions);
   assert.ok(one > 0 && all > one && all <= 100);
-  assert.equal(projectShareOfVoice(baseline, []), 0);
+  assert.equal(projectShareOfVoice(baseline, []), scoreRun(baseline).shareOfVoice);
 });
 
 test('parses a Claude web-search response into domains, rank and mention', () => {
@@ -61,6 +62,7 @@ test('program search maps everyday words to the right programs', () => {
   assert.equal(findPrograms(catalog, { topic: 'university students' }).programs[0].id, 'sky-campus');
   const t = findPrograms(catalog, { topic: 'meditation', city: 'toronto' });
   assert.equal(t.centres.length, 2);
+  assert.ok(findPrograms(catalog, { city: 'Sherbrooke' }).centres.length === 1);
   assert.match(findPrograms(catalog, { city: 'Halifax' }).note, /No listed centre in Halifax/);
 });
 
@@ -95,4 +97,13 @@ test('MCP server exposes tools and answers find_programs', async () => {
   const res = await client.callTool({ name: 'find_programs', arguments: { topic: 'sleep' } });
   assert.equal(JSON.parse(res.content[0].text).programs[0].id, 'sleep-anxiety');
   await client.close();
+});
+
+test('French materials cover Québec cities and keep drafts flagged', async () => {
+  const { faqFr, listingsFr } = await import('../src/fixes/french.js');
+  const f = faqFr({ programs: catalog.programs });
+  assert.ok(f.items.length >= 4 && f.items.every((i) => i.status === 'brouillon-a-verifier'));
+  assert.equal(f.jsonLd.inLanguage, 'fr-CA');
+  const l = listingsFr({ catalog, cities: ['Sherbrooke'] });
+  assert.ok(l.every((x) => x.title.length <= 75 && x.body.includes('/ca-fr/')));
 });

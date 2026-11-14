@@ -74,6 +74,16 @@ details > summary { cursor: pointer; font-weight: 600; color: var(--muted); padd
 .result a { color: var(--accent); }
 svg text { fill: var(--muted); font-size: 12px; }
 .scroll { overflow-x: auto; }
+.pmap { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; max-width: 760px; }
+.prov { border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 12px; line-height: 1.3; border: 1px solid var(--line); }
+.prov b { display: block; font-size: 15px; }
+.prov.zero { background: var(--bad-soft); color: var(--bad); }
+.prov.some { background: var(--accent-soft); color: var(--accent); }
+.prov.good { background: var(--good-soft); color: var(--good); }
+.prov.none { color: var(--muted); }
+.key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin: 0 2px 0 8px; }
+.key.zero { background: var(--bad-soft); border: 1px solid var(--bad); } .key.some { background: var(--accent-soft); border: 1px solid var(--accent); } .key.good { background: var(--good-soft); border: 1px solid var(--good); }
+@media (max-width: 600px) { .prov { padding: 6px 1px; font-size: 10px; } .prov b { font-size: 12px; } }
 @media (max-width: 600px) { .bars .row { grid-template-columns: 110px 1fr 70px; font-size: 14px; } .big { font-size: 34px; } }
 </style>
 </head>
@@ -115,33 +125,59 @@ document.addEventListener('click', (e) => { const t = e.target.closest('[data-go
 
 const date = (iso) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
+const PROVINCES = [
+  ['', '', '', '', '', '', '', '', '', 'NL'],
+  ['', 'BC', 'AB', 'SK', 'MB', 'ON', 'QC', '', 'NB', 'PE'],
+  ['', '', '', '', '', '', '', '', 'NS', ''],
+];
+const PNAME = { BC: 'British Columbia', AB: 'Alberta', SK: 'Saskatchewan', MB: 'Manitoba', ON: 'Ontario', QC: 'Québec', NB: 'New Brunswick', NS: 'Nova Scotia', PE: 'PEI', NL: 'Newfoundland' };
+
+function provinceMap(byProv) {
+  const cell = (p) => {
+    if (!p) return '<div></div>';
+    const v = byProv[p];
+    if (!v) return `<div class="prov none" title="${PNAME[p]}: not tested yet"><b>${p}</b><span>not tested</span></div>`;
+    const cls = v.mentioned === 0 ? 'zero' : v.mentioned / v.total < 0.5 ? 'some' : 'good';
+    return `<div class="prov ${cls}" title="${PNAME[p]}"><b>${p}</b><span>${v.mentioned} of ${v.total}</span></div>`;
+  };
+  return `<div class="pmap">${PROVINCES.flat().map(cell).join('')}</div>
+    <p class="muted small" style="margin:8px 0 0"><span class="key zero"></span> never came up <span class="key some"></span> came up sometimes <span class="key good"></span> came up often. Numbers: questions where we came up, out of questions asked in that province.</p>`;
+}
+
 function renderAudit() {
-  const base = S.runs[0];
   const latest = S.runs[S.runs.length - 1];
   const unb = latest.queries.filter((q) => !q.branded);
   const brand = latest.queries.filter((q) => q.branded);
-  const top = base.topSources.filter((s) => s.kind !== 'other').slice(0, 8);
+  const wins = unb.filter((q) => q.mentioned);
+  const fr = unb.filter((q) => /FR/.test(q.intent));
+  const top = latest.topSources.filter((s) => s.kind !== 'other').slice(0, 8);
+  const cities = new Set(unb.map((q) => q.city).filter((c) => c !== 'Canada'));
   $('#audit').innerHTML = `
     <div class="steps">
-      <div><b>1. We asked</b>${unb.length} everyday questions people type, like "meditation classes Calgary".</div>
-      <div><b>2. We checked</b>whether the answer sources included Art of Living.</div>
+      <div><b>1. We asked</b>${unb.length} everyday questions in ${cities.size} cities and every province, in English and French, like "meditation classes Calgary".</div>
+      <div><b>2. We checked</b>whether the sources chatbots use for the answer include Art of Living.</div>
       <div><b>3. We found</b>where people are sent instead, and what we can fix.</div>
     </div>
     <div class="grid">
       <div class="card"><h3>Everyday questions that mention us ${MEASURED}</h3>
         <div class="big">${latest.unbrandedMentioned} <small>out of ${latest.unbrandedTotal}</small></div>
-        <div class="muted">Someone new to meditation, asking for a class in their city, does not hear about Art of Living.</div></div>
+        <div class="muted">Someone new to meditation, asking for a class in their city, usually does not hear about Art of Living.</div></div>
       <div class="card"><h3>When people already know our name ${MEASURED}</h3>
         <div class="big">${brand.filter((q) => q.mentioned).length} <small>out of ${brand.length}</small></div>
-        <div class="muted">Searching "Sudarshan Kriya course Canada" finds us right away. The problem is reaching new people.</div></div>
+        <div class="muted">Searching "Art of Living Montreal" or "Sudarshan Kriya course" finds us right away. The problem is reaching new people.</div></div>
     </div>
-    <div class="callout"><b>In short:</b> chatbots send people to event websites like Eventbrite and Meetup, and to other meditation groups. We are not on those sites, so we are left out. <a href="#" data-go="lift">See what to do next →</a></div>
+    <div class="callout"><b>The pattern:</b> we came up only in cities where we have our own centre page (Markham, Richmond Hill, Kitchener-Waterloo, Sherbrooke) or where our retreats are listed on a booking site. Everywhere else, chatbots send people to Eventbrite, Meetup and other groups. <a href="#" data-go="lift">See what to do next →</a></div>
+    <h2>Across Canada</h2>
+    <div class="card">${provinceMap(latest.byProvince)}</div>
+    <h2>Where we did come up, and why</h2>
+    <div class="card">${wins.map((q) => `<p style="margin:6px 0">✓ "${esc(q.query)}": <span class="muted">${esc(q.note ?? 'An Art of Living page came up.')}</span></p>`).join('')}</div>
     <h2>Where people are sent instead</h2>
-    <div class="card"><div class="bars">${top.map((s) => `<div class="row"><span>${esc(s.name)}</span><div class="track"><div class="fill ${s.kind === 'listing' ? 'listing' : ''}" style="width:${(100 * s.queries) / top[0].queries}%"></div></div><span class="small muted">${s.queries} of ${base.unbrandedTotal}</span></div>`).join('')}</div>
-      <p class="muted small" style="margin-bottom:0"><span style="color:var(--accent);font-weight:600">Orange</span> = event websites where any volunteer can post our sessions today. Grey = other meditation groups and news sites.</p></div>
+    <div class="card"><div class="bars">${top.map((s) => `<div class="row"><span>${esc(s.name)}</span><div class="track"><div class="fill ${s.kind === 'listing' ? 'listing' : ''}" style="width:${(100 * s.queries) / top[0].queries}%"></div></div><span class="small muted">${s.queries} of ${latest.unbrandedTotal}</span></div>`).join('')}</div>
+      <p class="muted small" style="margin-bottom:0"><span style="color:var(--accent);font-weight:600">Orange</span> = event and booking websites where volunteers can post our sessions. Grey = other meditation groups and course companies.</p></div>
     <h2>Every question we asked</h2>
-    <div class="card scroll"><table><tr><th>What someone asked</th><th>Did we come up?</th><th>Where they were sent</th></tr>
-      ${latest.queries.map((q) => `<tr><td>"${esc(q.query)}"${q.branded ? ' <span class="muted small">(used our name)</span>' : ''}</td>
+    <p class="muted small">${fr.length} of these were asked in French, for Québec.</p>
+    <div class="card scroll"><table><tr><th>What someone asked</th><th>Where</th><th>Did we come up?</th><th>Where they were sent</th></tr>
+      ${latest.queries.map((q) => `<tr><td>"${esc(q.query)}"${q.branded ? ' <span class="muted small">(used our name)</span>' : ''}</td><td class="small">${esc(q.city)}</td>
         <td class="${q.mentioned ? 'yes' : 'no'}">${q.mentioned ? 'Yes' : 'No'}</td>
         <td><div class="chips">${q.sources.slice(0, 4).map((d) => `<span class="chip">${esc(d)}</span>`).join('')}</div></td></tr>`).join('')}</table></div>
     <h2>What we noticed on our own website ${MEASURED}</h2>
@@ -207,13 +243,17 @@ function renderFixes() {
         <button class="ghost" data-copy="${i}">Copy this listing</button></div>`).join('')}</details>`).join('')}
     <h2>2. Answers to common questions <span class="tag draft">Draft: a teacher checks before posting</span></h2>
     <div class="card">${f.faq.items.map((i) => `<p><b>${esc(i.question)}</b><br>${esc(i.answer)}</p>`).join('')}</div>
-    <h2>3. New centre pages (preview)</h2>
+    <h2>3. En français, pour le Québec <span class="tag draft">Brouillon : à vérifier par un enseignant</span></h2>
+    <div class="card">${S.faqFr.items.map((i) => `<p><b>${esc(i.question)}</b><br>${esc(i.answer)}</p>`).join('')}
+      <p class="muted small" style="margin-bottom:0">French event listings for Montréal, Québec and Sherbrooke are in the listings above, marked "(français)".</p></div>
+    <h2>4. New centre pages (preview)</h2>
     <p class="muted">Each page has a clear title, a short summary and the common questions, worded the way people actually ask.</p>
     <div class="card">${S.catalog.centres.map((c) => `<p style="margin:6px 0"><a href="fixes/city/${c.id}.html" target="_blank" style="color:var(--accent)">${esc(c.name)}</a></p>`).join('')}</div>
     <details><summary>For the website team: technical files</summary>
       <p class="small">Page titles and descriptions:</p><pre>${esc(f.centres.map((c) => `${c.meta.url}\n  title: ${c.meta.title}\n  description: ${c.meta.description}`).join('\n\n'))}</pre>
       <p class="small">Course schema (JSON-LD):</p><pre>${esc(JSON.stringify([f.organization, ...f.courses], null, 2))}</pre>
       <p class="small">FAQ schema (JSON-LD):</p><pre>${esc(JSON.stringify(f.faq.jsonLd, null, 2))}</pre>
+      <p class="small">French FAQ schema (JSON-LD):</p><pre>${esc(JSON.stringify(S.faqFr.jsonLd, null, 2))}</pre>
       <p class="small">Canada llms.txt (guide file for AI tools):</p><pre>${esc(f.llmsTxt)}</pre>
     </details>`;
   $('#fixes').addEventListener('click', (e) => {

@@ -27,6 +27,11 @@ Contact: +1-800-983-3886. Head office and retreat centre: 13 Chem. de l'Infinit√
 - [Art of Living Richmond Hill](https://www.artofliving.org/ca-en/richmond-hill): Richmond Hill, ON
 - [Art of Living North Vancouver](https://www.artofliving.org/ca-en/north-vancouver): Vancouver, BC
 - [Art of Living Canada Centre (retreat)](https://www.artoflivingcanadacentre.org/): Saint-Mathieu-du-Parc, QC
+- [Art of Living Kitchener-Waterloo](https://www.artofliving.org/ca-en/center/kitchener-waterloo): Kitchener-Waterloo, ON
+- [Art of Living Markham](https://www.artofliving.org/ca-en/center/markham): Markham, ON
+- [Art of Living Sherbrooke](https://www.artofliving.org/ca-en/center/sherbrooke): Sherbrooke, QC
+- [Art of Living Montreal - Lachine](https://www.artofliving.org/ca-en/montreal-lachine): Montreal, QC
+- [Art of Living Vancouver Region](https://www.artofliving.org/ca-en/center/vancouver-region): Vancouver, BC
 
 ## For AI assistants
 - Live program search API: /api/programs?city={city}&topic={topic}
