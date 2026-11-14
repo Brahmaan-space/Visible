@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visible: AI search kit</title>
+<style>
+:root {
+  --bg: #faf8f4; --panel: #ffffff; --ink: #1d1b18; --muted: #6b665e; --line: #e7e2d9;
+  --accent: #c2541b; --accent-soft: #fbe9de; --good: #2f7d4f; --good-soft: #e3f2e8; --bad: #b3261e; --bad-soft: #fbe4e2;
+  --sim: #6a4fb3; --sim-soft: #ece6fa; --bar: #d9d2c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161513; --panel: #1f1d1a; --ink: #f1ede6; --muted: #a39d93; --line: #34312c;
+    --accent: #ef8a50; --accent-soft: #3a2619; --good: #6cc48f; --good-soft: #1d3326; --bad: #f08a83; --bad-soft: #3a1f1d;
+    --sim: #b39cf2; --sim-soft: #2a2340; --bar: #46423b;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { padding: 20px 16px 0; max-width: 1100px; margin: 0 auto; }
+header h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
+header h1 span { color: var(--accent); }
+header p { margin: 4px 0 0; color: var(--muted); }
+nav { max-width: 1100px; margin: 16px auto 0; padding: 0 16px; display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+nav button { background: none; border: 0; padding: 10px 12px; font: inherit; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+nav button[aria-selected="true"] { color: var(--ink); border-color: var(--accent); font-weight: 600; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+section[hidden] { display: none; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.card h3 { margin: 0 0 6px; font-size: 14px; color: var(--muted); font-weight: 600; }
+.big { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; letter-spacing: 0.04em; vertical-align: middle; }
+.real { background: var(--good-soft); color: var(--good); }
+.sim { background: var(--sim-soft); color: var(--sim); }
+.draft { background: var(--accent-soft); color: var(--accent); }
+h2 { font-size: 18px; margin: 24px 0 8px; }
+.muted { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+.yes { color: var(--good); font-weight: 600; } .no { color: var(--bad); font-weight: 600; }
+.bars .row { display: grid; grid-template-columns: 150px 1fr 40px; gap: 8px; align-items: center; margin: 5px 0; font-size: 13px; }
+.bars .track { background: var(--line); border-radius: 4px; height: 12px; overflow: hidden; }
+.bars .fill { height: 100%; background: var(--bar); }
+.bars .fill.listing { background: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+.chip.own { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.action { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.action input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--accent); }
+.action .t { font-weight: 600; }
+.action .meta { font-size: 13px; color: var(--muted); }
+.lever { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); font-weight: 700; }
+pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow: auto; font-size: 12.5px; max-height: 420px; white-space: pre-wrap; word-break: break-word; }
+button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+button.ghost { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+input[type=text], select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.subtabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.subtabs button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.sev-high { color: var(--bad); font-weight: 700; } .sev-medium { color: var(--accent); font-weight: 700; } .sev-ok { color: var(--good); font-weight: 700; }
+svg text { fill: var(--muted); font-size: 11px; }
+.callout { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+.scroll { overflow-x: auto; }
+@media (max-width: 600px) { .bars .row { grid-template-columns: 110px 1fr 32px; } .big { font-size: 36px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1><span>Visible</span> · Art of Living in AI search</h1>
+  <p>Measure how often AI answers send Canadians to Art of Living, fix the gaps, and re-test.</p>
+</header>
+<nav role="tablist">
+  <button role="tab" data-tab="audit" aria-selected="true">1. Audit</button>
+  <button role="tab" data-tab="lift">2. Lift plan</button>
+  <button role="tab" data-tab="fixes">3. Fixes</button>
+  <button role="tab" data-tab="feed">4. AI feed</button>
+  <button role="tab" data-tab="retest">5. Re-test</button>
+</nav>
+<main>
+  <section id="audit"></section>
+  <section id="lift" hidden></section>
+  <section id="fixes" hidden></section>
+  <section id="feed" hidden></section>
+  <section id="retest" hidden></section>
+</main>
+<script>window.VISIBLE_STATIC = true;</script>
+<script>
+const $ = (sel, el = document) => el.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const OWN = ['artofliving.org', 'artoflivingcanadacentre.org', 'skycampuscanada.org'];
+const isOwn = (d) => OWN.some((o) => d === o || d.endsWith('.' + o));
+let S;
+const STATIC = !!window.VISIBLE_STATIC;
+
+document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('nav button').forEach((x) => x.setAttribute('aria-selected', x === b));
+  document.querySelectorAll('main section').forEach((s) => (s.hidden = s.id !== b.dataset.tab));
+}));
+
+function bars(items, max) {
+  return `<div class="bars">${items.map((i) => `<div class="row"><span>${esc(i.name)}</span><div class="track"><div class="fill ${i.kind === 'listing' ? 'listing' : ''}" style="width:${(100 * i.queries) / max}%"></div></div><span>${i.queries}</span></div>`).join('')}</div>`;
+}
+
+function renderAudit() {
+  const base = S.runs[0];
+  const latest = S.runs[S.runs.length - 1];
+  const cities = Object.entries(base.byCity);
+  $('#audit').innerHTML = `
+    <div class="grid">
+      <div class="card"><h3>Share of voice, unbranded questions <span class="tag real">REAL</span></h3>
+        <div class="big">${latest.shareOfVoice}%</div>
+        <div class="muted">${latest.unbrandedMentioned} of ${latest.unbrandedTotal} everyday questions ("meditation classes Calgary") surface Art of Living.</div></div>
+      <div class="card"><h3>Branded recall <span class="tag real">REAL</span></h3>
+        <div class="big">${latest.brandedRecall}%</div>
+        <div class="muted">People who already know the name ("Sudarshan Kriya course Canada") find it fine. Discovery is the gap.</div></div>
+      <div class="card"><h3>Who AI sends people to instead</h3>
+        <div class="big">${base.topSources[0].name}</div>
+        <div class="muted">In the top results for ${base.topSources[0].queries} of ${base.unbrandedTotal} questions. Listing sites dominate.</div></div>
+    </div>
+    <p class="muted" style="font-size:13px">Run <b>${esc(latest.runId)}</b>, ${new Date(latest.runAt).toLocaleString()}. ${esc(latest.method)}</p>
+    <h2>Sources AI answers draw on for these questions</h2>
+    <div class="card">${bars(base.topSources.slice(0, 12), base.topSources[0].queries)}
+      <p class="muted" style="font-size:13px;margin-bottom:0">Orange bars are listing sites Art of Living can post to today. Grey are competitors, press and others.</p></div>
+    <h2>By city</h2>
+    <div class="card scroll"><table><tr><th>City</th><th>Questions</th><th>Art of Living shown</th></tr>
+      ${cities.map(([c, v]) => `<tr><td>${esc(c)}</td><td>${v.total}</td><td class="${v.mentioned ? 'yes' : 'no'}">${v.mentioned} of ${v.total}</td></tr>`).join('')}</table></div>
+    <h2>Site check <span class="tag real">REAL</span></h2>
+    <div class="card scroll"><table><tr><th>Severity</th><th>Finding</th><th>Page</th></tr>
+      ${S.siteFacts.facts.map((f) => `<tr><td class="sev-${f.severity}">${f.severity}</td><td>${esc(f.finding)}</td><td class="muted" style="font-size:12px;word-break:break-all">${esc(f.page)}</td></tr>`).join('')}</table></div>
+    <h2>Every question</h2>
+    <div class="card scroll"><table><tr><th>Question</th><th>City</th><th>Shown?</th><th>Top result domains</th></tr>
+      ${latest.queries.map((q) => `<tr><td>${esc(q.query)}${q.branded ? ' <span class="tag draft">BRANDED</span>' : ''}</td><td>${esc(q.city)}</td>
+        <td class="${q.mentioned ? 'yes' : 'no'}">${q.mentioned ? 'Yes' + (q.ownRank ? ' (#' + q.ownRank + ')' : '') : 'No'}</td>
+        <td><div class="chips">${[...new Set(q.resultDomains)].slice(0, 6).map((d) => `<span class="chip ${isOwn(d) ? 'own' : ''}">${esc(d.replace(/^www\./, ''))}</span>`).join('')}</div></td></tr>`).join('')}</table></div>`;
+}
+
+function curveSvg(points, baseline) {
+  const w = 640, h = 180, pad = 30;
+  const x = (i) => pad + (i * (w - 2 * pad)) / Math.max(points.length, 1);
+  const y = (v) => h - pad - (v * (h - 2 * pad)) / 100;
+  const all = [{ step: 0, projected: baseline }, ...points];
+  const d = all.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.projected).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="max-width:720px;display:block" role="img" aria-label="Projected share of voice as actions are completed">
+    ${[0, 25, 50, 75, 100].map((v) => `<line x1="${pad}" x2="${w - pad}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="2" y="${y(v) + 4}">${v}%</text>`).join('')}
+    <path d="${d}" fill="none" stroke="var(--sim)" stroke-width="2.5"/>
+    ${all.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.projected)}" r="3" fill="var(--sim)"><title>After ${p.step} action(s): ${p.projected}%</title></circle>`).join('')}
+    <text x="${pad}" y="${h - 8}">today</text><text x="${w - pad - 70}" y="${h - 8}">all ${points.length} actions</text></svg>`;
+}
+
+function projected(selected) {
+  const base = S.runs[0];
+  const unb = base.queries.filter((q) => !q.branded);
+  let e = 0;
+  for (const q of unb) {
+    if (q.mentioned) { e++; continue; }
+    e += 1 - selected.filter((a) => a.queryIds.includes(q.id)).reduce((m, a) => m * (1 - a.p), 1);
+  }
+  return Math.round((100 * e) / unb.length);
+}
+
+function renderLift() {
+  const acts = S.plan.actions;
+  const top = new Set(acts.slice(0, 6).map((a) => a.id));
+  $('#lift').innerHTML = `
+    <div class="callout"><b>Strategy.</b> AI answers about meditation in Canada are built from listing sites (Eventbrite, Coursetakers, Meetup, BookRetreats) and a few city pages, not from artofliving.org. So the fastest lift is to be on the pages AI already reads, then make our own pages answer the exact questions people ask. Actions are ranked by how many audited questions they reach, divided by effort.</div>
+    <div class="grid">
+      <div class="card"><h3>Today <span class="tag real">REAL</span></h3><div class="big">${S.runs[0].shareOfVoice}%</div></div>
+      <div class="card"><h3>If the ticked actions are done <span class="tag sim">SIMULATED</span></h3><div class="big" id="proj">0%</div><div class="muted" id="projn"></div></div>
+    </div>
+    <div class="card" style="margin-top:12px"><h3>Projected score as actions are completed in this order <span class="tag sim">SIMULATED</span></h3>${curveSvg(S.projection, S.runs[0].shareOfVoice)}
+      <p class="muted" style="font-size:13px;margin:0">Assumed chance each action gets Art of Living into the results for a question it targets: ${Object.entries(S.assumptions).map(([k, v]) => `${k} ${Math.round(v * 100)}%`).join(', ')}. These are planning guesses; the re-test replaces them with measured numbers.</p></div>
+    <h2>Ranked actions</h2>
+    <div class="card">${acts.map((a, i) => `<label class="action"><input type="checkbox" data-id="${a.id}" ${top.has(a.id) ? 'checked' : ''}>
+      <div><div class="lever">${i + 1}. ${esc(a.lever)}</div><div class="t">${esc(a.title)}</div>
+      <div class="meta">${esc(a.evidence)}</div><div class="meta">Visible builds: ${esc(a.visibleBuilds)}</div></div>
+      <div class="meta" style="text-align:right">reaches ${a.queryIds.length}<br>effort ${a.effort}</div></label>`).join('')}</div>`;
+  const update = () => {
+    const sel = [...document.querySelectorAll('#lift input:checked')].map((c) => acts.find((a) => a.id === c.dataset.id));
+    $('#proj').textContent = projected(sel) + '%';
+    $('#projn').textContent = `${sel.length} action(s) ticked`;
+  };
+  $('#lift').addEventListener('change', update);
+  update();
+}
+
+function renderFixes() {
+  const f = S.fixes;
+  const views = {
+    'City pages': () => `<p class="muted">One landing page per centre, with title, meta description, Course, Place and FAQ schema. Open a preview:</p>
+      <ul>${S.catalog.centres.map((c) => `<li><a href="fixes/city/${c.id}.html" target="_blank">${esc(c.name)}</a> <span class="muted">replaces title on ${esc(c.url)}</span></li>`).join('')}</ul>
+      <h3>New page titles and descriptions</h3><pre>${esc(f.centres.map((c) => `${c.meta.url}\n  title: ${c.meta.title}\n  description: ${c.meta.description}`).join('\n\n'))}</pre>`,
+    'FAQ': () => `<p><span class="tag draft">DRAFT</span> <span class="muted">Answers come from the real program catalog. A volunteer confirms each against current listings before publishing.</span></p>
+      ${f.faq.items.map((i) => `<p><b>${esc(i.question)}</b><br>${esc(i.answer)}</p>`).join('')}<h3>FAQPage JSON-LD</h3><pre>${esc(JSON.stringify(f.faq.jsonLd, null, 2))}</pre>`,
+    'Course schema': () => `<pre>${esc(JSON.stringify([f.organization, ...f.courses], null, 2))}</pre>`,
+    'llms.txt (Canada)': () => `<p class="muted">Today's llms.txt is US-centric and lists one Canadian link. This one lists every Canadian program and centre.</p><pre>${esc(f.llmsTxt)}</pre>`,
+    'Listing kit': () => `<p class="muted">Ready-to-paste titles, tags and descriptions for the listing sites AI cites most, per city.</p>
+      ${S.listings.map((l, i) => `<div class="card" style="margin:8px 0"><div class="lever">${esc(l.platform)}</div><b>${esc(l.title)}</b>
+        <div class="chips" style="margin:6px 0">${l.tags.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>
+        <pre style="max-height:140px">${esc(l.body)}</pre><button class="ghost" data-copy="${i}">Copy listing</button></div>`).join('')}`,
+  };
+  const names = Object.keys(views);
+  $('#fixes').innerHTML = `<div class="subtabs">${names.map((n, i) => `<button class="ghost" aria-pressed="${i === 0}" data-v="${esc(n)}">${esc(n)}</button>`).join('')}</div><div class="card" id="fixview"></div>`;
+  const show = (n) => { $('#fixview').innerHTML = views[n](); document.querySelectorAll('#fixes .subtabs button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === n)); };
+  $('#fixes').addEventListener('click', (e) => {
+    if (e.target.dataset.v) show(e.target.dataset.v);
+    if (e.target.dataset.copy) {
+      const l = S.listings[+e.target.dataset.copy];
+      navigator.clipboard?.writeText(`${l.title}\n\n${l.body}\n\nTags: ${l.tags.join(', ')}`).then(() => (e.target.textContent = 'Copied'), () => {});
+    }
+  });
+  show(names[0]);
+}
+
+function renderFeed() {
+  const origin = location.origin;
+  $('#feed').innerHTML = `
+    <p>AI assistants increasingly call tools instead of only searching. This feed lets them ask Art of Living directly.</p>
+    <div class="card"><h3>Try the program search an assistant would call</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><input type="text" id="ftopic" placeholder="topic, e.g. anxiety" value="anxiety">
+      <input type="text" id="fcity" placeholder="city, e.g. Toronto" value="Toronto"><button class="primary" id="fgo">Search</button></div>
+      <pre id="fout">Press Search</pre></div>
+    <h2>Connect an AI assistant</h2>
+    <div class="card"><p><b>MCP server (HTTP):</b> <code>${STATIC ? 'https://YOUR-NODE-HOST/mcp' : esc(origin) + '/mcp'}</code>${STATIC ? ' (this demo page is static; run <code>npm start</code> on any Node host to serve it)' : ''}, tools <code>find_programs</code>, <code>get_program</code>, <code>list_centres</code>. Add it as a custom connector in Claude or ChatGPT.</p>
+      <p><b>MCP server (local):</b></p><pre>{ "mcpServers": { "art-of-living": { "command": "node", "args": ["scripts/mcp-stdio.js"] } } }</pre>
+      <p><b>Open files:</b> ${STATIC ? '' : '<a href="api/programs?topic=sleep">/api/programs</a> · '}<a href="feed.json">feed.json</a> (schema.org graph) · <a href="llms.txt">llms.txt</a></p></div>`;
+  $('#fgo').addEventListener('click', async () => {
+    const q = new URLSearchParams({ topic: $('#ftopic').value, city: $('#fcity').value });
+    let out;
+    if (STATIC) {
+      const { findPrograms } = await import('./search.js');
+      out = findPrograms(S.catalog, { topic: $('#ftopic').value || undefined, city: $('#fcity').value || undefined });
+    } else {
+      out = await (await fetch('api/programs?' + q)).json();
+    }
+    $('#fout').textContent = JSON.stringify(out, null, 2);
+  });
+}
+
+function renderRetest() {
+  const runs = S.runs;
+  $('#retest').innerHTML = `
+    <p>After fixes go live, run the same questions again. Every run is saved, so the score history is real.</p>
+    <div class="card"><button class="primary" id="rgo" ${S.liveAuditAvailable ? '' : 'disabled'}>Run live re-test (${S.runs[0].queries.length} questions)</button>
+      <span class="muted" id="rstatus" style="margin-left:8px">${S.liveAuditAvailable ? 'Uses Claude with live web search, located in Canada.' : STATIC ? 'Static demo: run npm run audit with an API key to add a real re-test run.' : 'Set ANTHROPIC_API_KEY on the server to enable live re-tests.'}</span></div>
+    <h2>Run history</h2>
+    <div class="card scroll"><table><tr><th>Run</th><th>When</th><th>Label</th><th>Share of voice</th><th>Branded</th><th>Change</th></tr>
+      ${runs.map((r, i) => `<tr><td>${esc(r.runId)}</td><td>${new Date(r.runAt).toLocaleString()}</td><td><span class="tag ${r.label === 'REAL' ? 'real' : 'sim'}">${esc(r.label)}</span></td>
+        <td><b>${r.shareOfVoice}%</b></td><td>${r.brandedRecall}%</td><td>${i ? (r.shareOfVoice - runs[0].shareOfVoice >= 0 ? '+' : '') + (r.shareOfVoice - runs[0].shareOfVoice) + ' pts' : 'baseline'}</td></tr>`).join('')}</table></div>`;
+  $('#rgo')?.addEventListener('click', async () => {
+    $('#rgo').disabled = true;
+    await fetch('api/audit/run', { method: 'POST' });
+    const t = setInterval(async () => {
+      const j = await (await fetch('api/audit/status')).json();
+      $('#rstatus').textContent = j.running ? `Asking ${j.done}/${j.total}: ${j.current ?? ''}` : j.error ? 'Error: ' + j.error : 'Done';
+      if (!j.running) { clearInterval(t); load(); }
+    }, 2000);
+  });
+}
+
+async function load() {
+  S = await (await fetch(STATIC ? 'state.json' : 'api/state')).json();
+  renderAudit(); renderLift(); renderFixes(); renderFeed(); renderRetest();
+}
+load();
+</script>
+</body>
+</html>

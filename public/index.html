@@ -93,6 +93,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const OWN = ['artofliving.org', 'artoflivingcanadacentre.org', 'skycampuscanada.org'];
 const isOwn = (d) => OWN.some((o) => d === o || d.endsWith('.' + o));
 let S;
+const STATIC = !!window.VISIBLE_STATIC;
 
 document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('nav button').forEach((x) => x.setAttribute('aria-selected', x === b));
@@ -189,7 +190,7 @@ function renderFixes() {
   const f = S.fixes;
   const views = {
     'City pages': () => `<p class="muted">One landing page per centre, with title, meta description, Course, Place and FAQ schema. Open a preview:</p>
-      <ul>${S.catalog.centres.map((c) => `<li><a href="/fixes/city/${c.id}.html" target="_blank">${esc(c.name)}</a> <span class="muted">replaces title on ${esc(c.url)}</span></li>`).join('')}</ul>
+      <ul>${S.catalog.centres.map((c) => `<li><a href="fixes/city/${c.id}.html" target="_blank">${esc(c.name)}</a> <span class="muted">replaces title on ${esc(c.url)}</span></li>`).join('')}</ul>
       <h3>New page titles and descriptions</h3><pre>${esc(f.centres.map((c) => `${c.meta.url}\n  title: ${c.meta.title}\n  description: ${c.meta.description}`).join('\n\n'))}</pre>`,
     'FAQ': () => `<p><span class="tag draft">DRAFT</span> <span class="muted">Answers come from the real program catalog. A volunteer confirms each against current listings before publishing.</span></p>
       ${f.faq.items.map((i) => `<p><b>${esc(i.question)}</b><br>${esc(i.answer)}</p>`).join('')}<h3>FAQPage JSON-LD</h3><pre>${esc(JSON.stringify(f.faq.jsonLd, null, 2))}</pre>`,
@@ -222,13 +223,19 @@ function renderFeed() {
       <input type="text" id="fcity" placeholder="city, e.g. Toronto" value="Toronto"><button class="primary" id="fgo">Search</button></div>
       <pre id="fout">Press Search</pre></div>
     <h2>Connect an AI assistant</h2>
-    <div class="card"><p><b>MCP server (HTTP):</b> <code>${esc(origin)}/mcp</code>, tools <code>find_programs</code>, <code>get_program</code>, <code>list_centres</code>. Add it as a custom connector in Claude or ChatGPT.</p>
+    <div class="card"><p><b>MCP server (HTTP):</b> <code>${STATIC ? 'https://YOUR-NODE-HOST/mcp' : esc(origin) + '/mcp'}</code>${STATIC ? ' (this demo page is static; run <code>npm start</code> on any Node host to serve it)' : ''}, tools <code>find_programs</code>, <code>get_program</code>, <code>list_centres</code>. Add it as a custom connector in Claude or ChatGPT.</p>
       <p><b>MCP server (local):</b></p><pre>{ "mcpServers": { "art-of-living": { "command": "node", "args": ["scripts/mcp-stdio.js"] } } }</pre>
-      <p><b>Open endpoints:</b> <a href="/api/programs?topic=sleep">/api/programs</a> · <a href="/feed.json">/feed.json</a> (schema.org graph) · <a href="/llms.txt">/llms.txt</a></p></div>`;
+      <p><b>Open files:</b> ${STATIC ? '' : '<a href="api/programs?topic=sleep">/api/programs</a> · '}<a href="feed.json">feed.json</a> (schema.org graph) · <a href="llms.txt">llms.txt</a></p></div>`;
   $('#fgo').addEventListener('click', async () => {
     const q = new URLSearchParams({ topic: $('#ftopic').value, city: $('#fcity').value });
-    const r = await fetch('/api/programs?' + q);
-    $('#fout').textContent = JSON.stringify(await r.json(), null, 2);
+    let out;
+    if (STATIC) {
+      const { findPrograms } = await import('./search.js');
+      out = findPrograms(S.catalog, { topic: $('#ftopic').value || undefined, city: $('#fcity').value || undefined });
+    } else {
+      out = await (await fetch('api/programs?' + q)).json();
+    }
+    $('#fout').textContent = JSON.stringify(out, null, 2);
   });
 }
 
@@ -237,16 +244,16 @@ function renderRetest() {
   $('#retest').innerHTML = `
     <p>After fixes go live, run the same questions again. Every run is saved, so the score history is real.</p>
     <div class="card"><button class="primary" id="rgo" ${S.liveAuditAvailable ? '' : 'disabled'}>Run live re-test (${S.runs[0].queries.length} questions)</button>
-      <span class="muted" id="rstatus" style="margin-left:8px">${S.liveAuditAvailable ? 'Uses Claude with live web search, located in Canada.' : 'Set ANTHROPIC_API_KEY on the server to enable live re-tests.'}</span></div>
+      <span class="muted" id="rstatus" style="margin-left:8px">${S.liveAuditAvailable ? 'Uses Claude with live web search, located in Canada.' : STATIC ? 'Static demo: run npm run audit with an API key to add a real re-test run.' : 'Set ANTHROPIC_API_KEY on the server to enable live re-tests.'}</span></div>
     <h2>Run history</h2>
     <div class="card scroll"><table><tr><th>Run</th><th>When</th><th>Label</th><th>Share of voice</th><th>Branded</th><th>Change</th></tr>
       ${runs.map((r, i) => `<tr><td>${esc(r.runId)}</td><td>${new Date(r.runAt).toLocaleString()}</td><td><span class="tag ${r.label === 'REAL' ? 'real' : 'sim'}">${esc(r.label)}</span></td>
         <td><b>${r.shareOfVoice}%</b></td><td>${r.brandedRecall}%</td><td>${i ? (r.shareOfVoice - runs[0].shareOfVoice >= 0 ? '+' : '') + (r.shareOfVoice - runs[0].shareOfVoice) + ' pts' : 'baseline'}</td></tr>`).join('')}</table></div>`;
   $('#rgo')?.addEventListener('click', async () => {
     $('#rgo').disabled = true;
-    await fetch('/api/audit/run', { method: 'POST' });
+    await fetch('api/audit/run', { method: 'POST' });
     const t = setInterval(async () => {
-      const j = await (await fetch('/api/audit/status')).json();
+      const j = await (await fetch('api/audit/status')).json();
       $('#rstatus').textContent = j.running ? `Asking ${j.done}/${j.total}: ${j.current ?? ''}` : j.error ? 'Error: ' + j.error : 'Done';
       if (!j.running) { clearInterval(t); load(); }
     }, 2000);
@@ -254,7 +261,7 @@ function renderRetest() {
 }
 
 async function load() {
-  S = await (await fetch('/api/state')).json();
+  S = await (await fetch(STATIC ? 'state.json' : 'api/state')).json();
   renderAudit(); renderLift(); renderFixes(); renderFeed(); renderRetest();
 }
 load();

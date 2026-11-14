@@ -37,7 +37,10 @@ npm start            # dashboard on http://localhost:3000
 npm test             # 8 tests
 npm run audit        # live re-test (needs ANTHROPIC_API_KEY)
 npm run mcp          # MCP server over stdio
+npm run build:static # static demo into docs/ (GitHub Pages)
 ```
+
+**Hosting.** `docs/` is a static copy of the dashboard (audit, lift plan, fixes, client-side program search) for GitHub Pages: Settings > Pages > Deploy from branch `main`, folder `/docs`. The MCP endpoint and live re-test need the Node server (`npm start`) on any Node host; `vercel.json` and `api/index.js` are included if you use Vercel.
 
 Endpoints: `/api/programs?topic=anxiety&city=Toronto`, `/api/programs/:id`, `/feed.json`, `/llms.txt`, `/fixes/city/<centre>.html`, MCP over HTTP at `/mcp`.
 
