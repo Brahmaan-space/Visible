@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { ROOT, loadCatalog, loadSiteFacts, loadQueries, listRuns, saveRun } from './src/data.js';
-import { scoreRun } from './src/score.js';
+import { scoreRun, isOwn, sourceFamily } from './src/score.js';
 import { buildPlan, projectionCurve, ASSUMPTIONS } from './src/lift/plan.js';
 import { generateAll, cityLandingHtml, llmsTxt } from './src/fixes/generate.js';
 import { listingKit } from './src/fixes/listings.js';
@@ -35,7 +35,7 @@ export function state() {
   const cities = [...new Set(catalog.centres.map((c) => c.city))].filter((c) => c !== 'Saint-Mathieu-du-Parc');
   const families = [...new Set(plan.actions.filter((a) => a.lever === 'listing').slice(0, 5).map((a) => a.family))];
   return {
-    runs: runs.map((r) => ({ ...scoreRun(r), runAt: r.runAt, method: r.method, queries: r.queries })),
+    runs: runs.map((r) => ({ ...scoreRun(r), runAt: r.runAt, method: r.method, queries: r.queries.map((q) => ({ ...q, sources: [...new Set(q.resultDomains.filter((d) => !isOwn(d)).map(sourceFamily))] })) })),
     siteFacts: loadSiteFacts(),
     plan,
     projection: projectionCurve(baseline, plan),

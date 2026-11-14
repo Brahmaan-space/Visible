@@ -70,7 +70,10 @@ export function buildPlan(run) {
     visibleBuilds: 'Meta tags per page and a Canada llms.txt',
   });
 
-  for (const a of actions) a.impact = +(a.queryIds.length * a.p / a.effort).toFixed(2);
+  for (const a of actions) {
+    a.impact = +(a.queryIds.length * a.p / a.effort).toFixed(2);
+    Object.assign(a, plainWords(a, unbranded.length));
+  }
   actions.sort((a, b) => b.impact - a.impact);
   return { actions, unbrandedTotal: unbranded.length };
 }
@@ -90,4 +93,55 @@ export function projectShareOfVoice(run, actions) {
 // Projection curve: score after doing the top 1..n actions in plan order.
 export function projectionCurve(run, plan) {
   return plan.actions.map((a, i) => ({ step: i + 1, action: a.title, projected: projectShareOfVoice(run, plan.actions.slice(0, i + 1)) }));
+}
+
+// Plain-language version of each action, for volunteers.
+function plainWords(a, total) {
+  const n = a.queryIds.length;
+  const f = a.family;
+  const retreat = /Retreat/.test(f ?? '');
+  const by = {
+    listing: {
+      plainTitle: retreat ? `Post our silence retreat on ${f}` : `Post our upcoming sessions on ${f}`,
+      who: 'Any volunteer', time: retreat ? 'About 30 minutes' : 'About 30 minutes per city',
+      why: `When people ask about meditation, ${f} comes up for ${n} of our ${total} test questions. We are not on it yet.`,
+      steps: [`Copy the ready-made ${f} text from "Ready-made materials"`, `Sign in to ${f} with the centre's account (or create a free one)`, 'Add the real date, place and registration link, then publish', 'Repeat for each new session'],
+    },
+    directory: {
+      plainTitle: `Claim our free listing on ${f}`, who: 'Any volunteer', time: 'About 20 minutes per centre',
+      why: `${f} comes up for ${n} of ${total} questions.`,
+      steps: [`Search ${f} for the centre`, 'Claim or create the listing', 'Add address, phone, website and a short description'],
+    },
+    civic: {
+      plainTitle: `Add our sessions to the ${f} calendar`, who: 'Any volunteer', time: 'About 20 minutes',
+      why: `This public calendar comes up for ${n} of ${total} questions.`,
+      steps: ['Find the "submit an event" form on the calendar', 'Paste the session details and link', 'Submit; it usually goes live after review'],
+    },
+    campus: {
+      plainTitle: `Ask ${f} to list SKY Campus on its wellness pages`, who: 'SKY Campus team', time: 'One or two emails',
+      why: `University wellness pages come up when people ask about meditation for students.`,
+      steps: ['Find the student wellness office contact', 'Send a short note offering a free SKY session for students', 'Ask them to link to skycampuscanada.org'],
+    },
+    press: {
+      plainTitle: `Invite a writer from ${f} to try a session`, who: 'Communications volunteer', time: 'A few emails',
+      why: `${f} writes the "best meditation in town" lists that chatbots quote (${n} of ${total} questions).`,
+      steps: ['Find the writer of their latest meditation or wellness list', 'Invite them to a free intro session', 'Share a short fact sheet and the centre link'],
+    },
+    cityPage: {
+      plainTitle: 'Give each centre page a clear title and a "common questions" section', who: 'Website team', time: 'Half a day',
+      why: `${n} of ${total} questions mention a city, but our centre pages never come up. The new pages are already written.`,
+      steps: ['Open the centre page previews in "Ready-made materials"', 'Copy the title, summary and questions onto each real centre page', 'Ask a local teacher to check the answers'],
+    },
+    topicPage: {
+      plainTitle: a.title.replace(/^Publish a "(.*)" answer page$/, 'Write a page about "$1"'), who: 'Content volunteer + website team', time: '2 to 3 hours',
+      why: `People ask about this (${n} of ${total} questions) and only other providers come up.`,
+      steps: ['Use the draft answers in "Common questions" as a starting point', 'Have a teacher check the wording', 'Publish it on the Canadian site'],
+    },
+    hygiene: {
+      plainTitle: 'Tidy up the website so chatbots read it correctly', who: 'Website team', time: 'About 2 hours',
+      why: 'Old test pages crowd out real ones, and the home page has no summary. This helps every question a little.',
+      steps: ['Add a short summary to the home page', 'Remove or hide old pages like "i 504" and "home 4"', 'Publish the Canada guide file for AI tools'],
+    },
+  };
+  return by[a.lever];
 }
