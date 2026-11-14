@@ -107,3 +107,16 @@ test('French materials cover Québec cities and keep drafts flagged', async () =
   const l = listingsFr({ catalog, cities: ['Sherbrooke'] });
   assert.ok(l.every((x) => x.title.length <= 75 && x.body.includes('/ca-fr/')));
 });
+
+test('accuracy check sends our fact sheet and returns parsed claims', async () => {
+  const { checkAccuracy, factSheet } = await import('../src/audit/accuracy.js');
+  assert.match(factSheet(catalog), /Deep Sleep & Anxiety Relief/);
+  let sent;
+  const fake = { messages: { parse: async (req) => { sent = req; return { stop_reason: 'end_turn', parsed_output: { claims: [{ claim: 'Part 1 costs $5', verdict: 'not_in_our_facts', explanation: 'Prices are not in our facts.' }] } }; } } };
+  const out = await checkAccuracy(fake, 'Art of Living Part 1 costs $5.', catalog);
+  assert.equal(out.claims[0].verdict, 'not_in_our_facts');
+  assert.match(sent.messages[0].content, /<fact_sheet>/);
+  assert.ok(sent.output_config.format);
+  const refused = await checkAccuracy({ messages: { parse: async () => ({ stop_reason: 'refusal', parsed_output: null }) } }, 'x', catalog);
+  assert.deepEqual(refused.claims, []);
+});

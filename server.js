@@ -11,7 +11,9 @@ import { listingKit } from './src/fixes/listings.js';
 import { faqFr, listingsFr } from './src/fixes/french.js';
 import { findPrograms, getProgram } from './src/feed/search.js';
 import { buildMcpServer } from './src/feed/mcp.js';
-import { runAudit } from './src/audit/run.js';
+import Anthropic from '@anthropic-ai/sdk';
+import { runAudit, askClaude } from './src/audit/run.js';
+import { checkAccuracy } from './src/audit/accuracy.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const catalog = loadCatalog();
@@ -112,6 +114,19 @@ export async function handler(req, res) {
       return send(res, 202, auditJob);
     }
     if (path === '/api/audit/status') return send(res, 200, auditJob);
+    if (path === '/api/ask' && req.method === 'POST') {
+      if (!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)) {
+        return send(res, 400, { error: 'Asking a chatbot live needs ANTHROPIC_API_KEY set on the server.' });
+      }
+      const body = (await readBody(req)) ?? {};
+      const question = String(body.question ?? '').trim().slice(0, 300);
+      if (!question) return send(res, 400, { error: 'Type a question first.' });
+      const client = new Anthropic();
+      const r = await askClaude(client, { query: question, city: String(body.city ?? '').slice(0, 60) || undefined });
+      if (r.error) return send(res, 502, r);
+      const accuracy = r.mentioned ? await checkAccuracy(client, r.answer, catalog) : null;
+      return send(res, 200, { question, ...r, sources: [...new Set(r.resultDomains.filter((d) => !isOwn(d)).map(sourceFamily))], accuracy });
+    }
     return send(res, 404, { error: 'not found' });
   } catch (e) {
     console.error(e);

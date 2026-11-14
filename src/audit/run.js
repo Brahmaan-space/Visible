@@ -41,6 +41,7 @@ export function parseClaudeResponse(message) {
     citedOwn,
     mentioned: mentionedInAnswer || citedOwn,
     answerExcerpt: text.slice(0, 600),
+    answer: text,
   };
 }
 
@@ -73,7 +74,8 @@ export async function runAudit({ queries, client = new Anthropic(), label = 'REA
     } catch (err) {
       r = { error: err.message ?? String(err) };
     }
-    results.push({ ...q, engine: 'claude-opus-5-5+web_search', ...r, mentioned: !!r.mentioned });
+    const { answer, ...rest } = r; // keep stored runs small: excerpt only
+    results.push({ ...q, engine: 'claude-opus-5-5+web_search', ...rest, mentioned: !!r.mentioned });
     onProgress?.(i + 1, queries.length, q.query);
   }
   return {

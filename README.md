@@ -52,6 +52,12 @@ Endpoints: `/api/programs?topic=anxiety&city=Toronto`, `/api/programs/:id`, `/fe
 4. **AI feed tab:** search "anxiety" + "Toronto"; then show the same tool called from Claude through MCP.
 5. **Re-test tab:** run history; after fixes go live, run again for a real before/after.
 
+## Live features (need `ANTHROPIC_API_KEY`)
+
+- **Try it yourself:** ask any question; see the chatbot's actual answer, the sources it used, and whether Art of Living came up.
+- **Wrong-answer check:** when the answer mentions Art of Living, each claim is compared with the official catalog (correct, wrong, or not in our facts). The check uses only our fact sheet, never outside knowledge.
+- **Re-test:** asks all 54 questions again and adds a dated row to "Track progress".
+
 ## Layout
 
 ```
