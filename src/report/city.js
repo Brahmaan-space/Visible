@@ -61,7 +61,7 @@ export function cityReportHtml(r) {
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#1C1917;--muted:#78716C;--line:#E7E5E4;--bg:#FAF9F6;--panel:#fff;--accent:#B45309;--good:#16A34A;--bad:#DC2626}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#f1ede6;--muted:#a39d93;--line:#34312c;--bg:#161513;--panel:#1f1d1a;--accent:#ef8a50;--good:#6cc48f;--bad:#f08a83}}
+:root{color-scheme:light}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "DM Sans",-apple-system,"Segoe UI",sans-serif}
 h1,h2,.score{font-family:"Plus Jakarta Sans",-apple-system,sans-serif;letter-spacing:-.02em}
 th{background:#F5F5F4;text-transform:uppercase;letter-spacing:.08em;font-size:11.5px}
