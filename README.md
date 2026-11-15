@@ -29,6 +29,38 @@ So the plan, ranked by questions reached ÷ effort:
 
 Then re-test, and the real number replaces the projection.
 
+## How is this different from Semrush?
+
+Semrush tells a marketing team how a brand scores in AI search. Visible tells the volunteer in Sherbrooke what to post tonight, writes it in English and French, posts it once they approve it, and then checks whether chatbots now send people to that event.
+
+| | Semrush and similar tools | Visible |
+|---|---|---|
+| Built for | Marketing teams | Volunteers and local centre teams |
+| Unit of work | A brand's overall score | One city, one event |
+| After the score | A report | Ready-to-post listings, a review step, an Eventbrite draft |
+| Proof | Score over time | "Did chatbots point to this event?" plus registrations |
+| Wrong facts | Not checked against your own facts | Each claim checked against the approved course list |
+| Language | English-first | English and French |
+| Cost | Paid subscription | Open source, free to run |
+
+## Post an event (tab 3)
+
+Fill in the event once. Visible writes the listing for Eventbrite, Meetup, Google Business Profile and Instagram, in the order chatbots use them (Instagram last; chatbots rarely cite it). A volunteer must tick "I checked the date, place and wording" and add their name before anything can be copied or posted.
+
+- **Eventbrite:** posted through Eventbrite's official API as a **draft** event with a free ticket. Visible never sets an event live; the volunteer opens the draft in Eventbrite and publishes it. Needs `EVENTBRITE_TOKEN` (the centre's private token) and optionally `EVENTBRITE_ORG_ID`. Tested against a mocked API until a real token is added.
+- **Meetup:** ready to paste. Posting through Meetup's API needs a paid Meetup Pro account.
+- **Google Business Profile** and **Instagram:** ready to paste, with a link to open each site.
+
+## How's my event doing? (tab 4)
+
+Paste the link of a posted event (Eventbrite drafts are added automatically). "Check now" asks a chatbot the questions a newcomer in that city would ask and records whether the answer pointed to that exact event page. For Eventbrite events it also reads registrations. Eventbrite's API does not share page views, so those stay in the Eventbrite dashboard. "Ask Visible" answers "how is the Calgary intro doing?" in one plain sentence.
+
+The worked example (Canada Centre retreats on Retreat Guru) is checked against the real 54-question audit: chatbots pointed to it for 4 of 54 questions.
+
+## City report cards
+
+`report/<city>.html`: one printable page per audited city (31 cities): what people there asked, where they were sent, and a to-do list for this week with the listing text ready to paste.
+
 ## Run it
 
 ```bash

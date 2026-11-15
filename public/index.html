@@ -85,6 +85,19 @@ mark { background: var(--good-soft); color: var(--good); padding: 0 2px; border-
 .key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin: 0 2px 0 8px; }
 .key.zero { background: var(--bad-soft); border: 1px solid var(--bad); } .key.some { background: var(--accent-soft); border: 1px solid var(--accent); } .key.good { background: var(--good-soft); border: 1px solid var(--good); }
 @media (max-width: 600px) { .prov { padding: 6px 1px; font-size: 10px; } .prov b { font-size: 12px; } }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 14px; font-weight: 600; color: var(--muted); }
+label.f input { flex: none; }
+label.f input, label.f select, textarea { font: inherit; font-weight: 400; color: var(--ink); padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); }
+textarea { width: 100%; min-height: 150px; resize: vertical; font-size: 14px; }
+.form { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.pkg { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 12px 0; background: var(--panel); }
+.pkg .head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.count-ok { color: var(--muted); } .count-bad { color: var(--bad); font-weight: 600; }
+.review { background: var(--good-soft); border-radius: 12px; padding: 14px 16px; margin: 12px 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.review input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--good); }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+a.ghost { border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 7px 12px; font-size: 14px; text-decoration: none; }
+.okmsg { color: var(--good); font-weight: 600; } .errmsg { color: var(--bad); }
 @media (max-width: 600px) { .bars .row { grid-template-columns: 110px 1fr 70px; font-size: 14px; } .big { font-size: 34px; } }
 </style>
 </head>
@@ -96,13 +109,17 @@ mark { background: var(--good-soft); color: var(--good); padding: 0 2px; border-
 <nav role="tablist">
   <button role="tab" data-tab="audit" aria-selected="true">1. How we're doing</button>
   <button role="tab" data-tab="lift">2. What to do next</button>
-  <button role="tab" data-tab="fixes">3. Ready-made materials</button>
-  <button role="tab" data-tab="feed">4. Program finder</button>
-  <button role="tab" data-tab="retest">5. Track progress</button>
+  <button role="tab" data-tab="post">3. Post an event</button>
+  <button role="tab" data-tab="events">4. How's my event doing?</button>
+  <button role="tab" data-tab="fixes">5. Ready-made materials</button>
+  <button role="tab" data-tab="feed">6. Program finder</button>
+  <button role="tab" data-tab="retest">7. Track progress</button>
 </nav>
 <main>
   <section id="audit"></section>
   <section id="lift" hidden></section>
+  <section id="post" hidden></section>
+  <section id="events" hidden></section>
   <section id="fixes" hidden></section>
   <section id="feed" hidden></section>
   <section id="retest" hidden></section>
@@ -168,6 +185,10 @@ function renderAudit() {
         <div class="muted">Searching "Art of Living Montreal" or "Sudarshan Kriya course" finds us right away. The problem is reaching new people.</div></div>
     </div>
     <div class="callout"><b>The pattern:</b> we came up only in cities where we have our own centre page (Markham, Richmond Hill, Kitchener-Waterloo, Sherbrooke) or where our retreats are listed on a booking site. Everywhere else, chatbots send people to Eventbrite, Meetup and other groups. <a href="#" data-go="lift">See what to do next →</a></div>
+    <div class="card"><h3>Your city's report card</h3>
+      <p class="small muted" style="margin:0 0 8px">One page for your local centre team: what people in your city asked, where they were sent, and a to-do list for this week. Easy to print or forward.</p>
+      <div class="btnrow" style="margin:0"><select id="citypick" style="font:inherit;padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink)">${S.cities.map((c) => `<option value="${c.slug}">${esc(c.city)} (${c.found} of ${c.total})</option>`).join('')}</select>
+      <a class="ghost" id="cityopen" href="report/${S.cities[0]?.slug}.html" target="_blank">Open report card</a></div></div>
     <h2>Try it yourself</h2>
     <div class="card"><p style="margin-top:0">Ask any question a newcomer might ask. We send it to a chatbot with live web search and show what it says, whether we come up, and whether what it says about us is correct.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="askq" placeholder="e.g. where can I learn breathing for stress in Winnipeg?">
@@ -338,9 +359,187 @@ function renderRetest() {
   });
 }
 
+// ---------- 3. Post an event ----------
+const PROV = ['ON', 'QC', 'BC', 'AB', 'MB', 'SK', 'NS', 'NB', 'PE', 'NL'];
+const LOCAL_KEY = 'visible-events';
+const localEvents = () => { try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; } };
+const saveLocal = (list) => { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(list)); } catch {} };
+let PK = null; // the prepared packages
+let lastEvent = null;
+
+function formEvent() {
+  const v = (id) => $('#' + id).value.trim();
+  return { programId: v('ep'), city: v('ec'), province: v('epr'), venue: v('ev'), address: v('ea'), online: $('#eo').checked,
+    start: v('es'), end: v('ee'), capacity: v('ecap'), registrationUrl: v('er'), lang: v('el') };
+}
+
+function renderPost() {
+  const cities = [...new Set([...S.cities.map((c) => c.city), ...S.catalog.centres.map((c) => c.city)])].sort();
+  const starters = ['intro', 'part-1', 'sleep-anxiety', 'sahaj', 'sri-sri-yoga'];
+  const progs = [...S.catalog.programs].sort((a, b) => (starters.indexOf(b.id) >= 0) - (starters.indexOf(a.id) >= 0));
+  $('#post').innerHTML = `
+    <p class="lead">Fill in the event once. Visible writes the listing for each site, in the order chatbots use them. A volunteer checks it, and only then can it be posted.</p>
+    <div class="steps">
+      <div><b>1. Fill in</b>the program, city, date and place.</div>
+      <div><b>2. Check</b>the wording Visible wrote, and edit anything.</div>
+      <div><b>3. Approve</b>by ticking the box and adding your name.</div>
+      <div><b>4. Post</b>Eventbrite gets a draft automatically. The others are one copy-paste each.</div>
+    </div>
+    <div class="card"><div class="form">
+      <label class="f">Program<select id="ep">${progs.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>
+      <label class="f">City<input id="ec" list="citylist" value="Calgary"><datalist id="citylist">${cities.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></label>
+      <label class="f">Province<select id="epr">${PROV.map((p) => `<option ${p === 'AB' ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+      <label class="f">Language<select id="el"><option value="en">English</option><option value="fr">Français</option></select></label>
+      <label class="f">Starts<input id="es" type="datetime-local" value="2026-12-03T19:00"></label>
+      <label class="f">Ends<input id="ee" type="datetime-local" value="2026-12-03T20:30"></label>
+      <label class="f">Place name<input id="ev" placeholder="e.g. Kensington Community Hall"></label>
+      <label class="f">Street address<input id="ea" placeholder="e.g. 123 Main St"></label>
+      <label class="f">Spots<input id="ecap" type="number" value="30" min="1"></label>
+      <label class="f">Registration link (optional)<input id="er" placeholder="Leave empty to use the official course page"></label>
+      <label class="f" style="flex-direction:row;align-items:center;gap:8px"><input id="eo" type="checkbox" style="width:18px;height:18px"> It's online</label>
+    </div><div class="btnrow"><button class="primary" id="eprep">Write the listings</button></div></div>
+    <div id="pkgs"></div>`;
+  $('#ec').addEventListener('change', () => { const c = S.cities.find((x) => x.city === $('#ec').value) || S.catalog.centres.find((x) => x.city === $('#ec').value); if (c) $('#epr').value = c.province || c.region; if ((c?.province || c?.region) === 'QC') $('#el').value = 'fr'; });
+  $('#eprep').addEventListener('click', preparePackages);
+}
+
+async function preparePackages() {
+  const P = await import('./platforms.js');
+  lastEvent = formEvent();
+  PK = P.eventPackages(S.catalog, lastEvent);
+  const ebLive = S.publishAvailable?.eventbrite && !STATIC;
+  $('#pkgs').innerHTML = `
+    <h2>Check the listings</h2>
+    ${PK.map((p, i) => `<div class="pkg"><div class="head"><b>${i + 1}. ${esc(p.name)}</b><span class="small muted">${esc(p.citedIn)}</span></div>
+      ${p.id !== 'instagram' ? `<label class="f" style="margin-top:8px">Title <span class="small" id="tc${i}"></span><input type="text" id="pt${i}" value="${esc(p.title)}" style="font:inherit"></label>` : ''}
+      <label class="f" style="margin-top:8px">${p.id === 'instagram' ? 'Caption' : 'Description'} <span class="small" id="bc${i}"></span><textarea id="pb${i}">${esc(p.body)}</textarea></label>
+      ${p.note ? `<p class="small muted" style="margin:6px 0 0">${esc(p.note)}</p>` : ''}
+      <div class="btnrow">${p.how === 'api'
+        ? `<button class="primary gate" data-eb="${i}" ${ebLive ? '' : 'data-off="1"'}>Create Eventbrite draft</button><button class="ghost gate" data-cp="${i}">Copy text</button>
+           <span class="small muted" id="ebmsg">${ebLive ? 'Creates a draft only. You publish it inside Eventbrite.' : STATIC ? 'Posting to Eventbrite works in the full version once the centre’s Eventbrite token is added. For now, copy the text.' : 'Needs the centre’s Eventbrite token on the server (EVENTBRITE_TOKEN). For now, copy the text.'}</span>`
+        : `<button class="ghost gate" data-cp="${i}">Copy text</button><a class="ghost" href="${esc(p.open)}" target="_blank" rel="noopener">Open ${esc(p.name)}</a>`}</div></div>`).join('')}
+    <div class="review"><label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="rv"> I checked the date, place and wording</label>
+      <input type="text" id="rn" placeholder="Your name" style="max-width:240px">
+      <span class="small muted">Nothing can be posted or copied until a volunteer approves it.</span></div>
+    <div class="card"><h3>Posted it? Track it.</h3>
+      <p class="small muted" style="margin:0 0 8px">Paste the link of the posted event. Visible will check whether chatbots start pointing people to it.</p>
+      <div class="btnrow" style="margin:0"><input type="text" id="tl" placeholder="https://www.eventbrite.ca/e/..."><button class="primary" id="tgo">Track this event</button></div>
+      <p class="small" id="tmsg"></p></div>`;
+  const counts = () => PK.forEach((p, i) => {
+    const t = $('#pt' + i), b = $('#pb' + i);
+    if (t && p.titleMax) $('#tc' + i).innerHTML = `<span class="${t.value.length > p.titleMax ? 'count-bad' : 'count-ok'}">${t.value.length}/${p.titleMax}</span>`;
+    if (p.bodyMax) $('#bc' + i).innerHTML = `<span class="${b.value.length > p.bodyMax ? 'count-bad' : 'count-ok'}">${b.value.length}/${p.bodyMax}</span>`;
+  });
+  const gate = () => { const ok = $('#rv').checked && $('#rn').value.trim().length > 1; document.querySelectorAll('#pkgs .gate').forEach((b) => (b.disabled = !ok || b.dataset.off === '1')); };
+  $('#pkgs').oninput = () => { counts(); gate(); };
+  $('#rv').addEventListener('change', gate);
+  counts(); gate();
+  $('#pkgs').onclick = async (e) => {
+    const cp = e.target.dataset.cp, eb = e.target.dataset.eb;
+    if (cp !== undefined) {
+      const t = $('#pt' + cp)?.value, b = $('#pb' + cp).value;
+      navigator.clipboard?.writeText(t ? `${t}\n\n${b}` : b).then(() => (e.target.textContent = 'Copied ✓'), () => {});
+    }
+    if (eb !== undefined) {
+      e.target.disabled = true; $('#ebmsg').textContent = 'Creating the draft…';
+      const r = await fetch('api/publish/eventbrite', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ event: lastEvent, pkg: { title: $('#pt' + eb).value, body: $('#pb' + eb).value }, approvedBy: $('#rn').value.trim(), checked: $('#rv').checked }) });
+      const j = await r.json();
+      if (!r.ok) { $('#ebmsg').innerHTML = `<span class="errmsg">${esc(j.error)}</span>`; e.target.disabled = false; return; }
+      $('#ebmsg').innerHTML = `<span class="okmsg">Draft created ✓</span> <a href="${esc(j.draft.manageUrl)}" target="_blank" style="color:var(--accent)">Open it in Eventbrite to publish</a>. It is now in "How's my event doing?".`;
+      await reloadEvents();
+    }
+  };
+  $('#tgo').addEventListener('click', () => addEvent({ ...lastEvent, title: PK[0].title, url: $('#tl').value.trim(), approvedBy: $('#rn').value.trim() }, '#tmsg'));
+}
+
+async function addEvent(fields, msgSel) {
+  if (!fields.url && !fields.title) { $(msgSel).innerHTML = '<span class="errmsg">Paste the event link first.</span>'; return; }
+  if (STATIC) {
+    const id = 'local-' + Date.now().toString(36);
+    const ev = { id, ...fields, platform: fields.url ? new URL(fields.url, location.href).hostname.replace(/^www\./, '') : 'event', addedAt: new Date().toISOString(), checks: [], local: true,
+      report: 'Saved on this device. Not checked yet: checking runs in the full version, which asks a chatbot the questions a newcomer in that city would ask.' };
+    saveLocal([...localEvents(), ev]);
+  } else {
+    const r = await fetch('api/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(fields) });
+    if (!r.ok) { $(msgSel).innerHTML = `<span class="errmsg">${esc((await r.json()).error)}</span>`; return; }
+  }
+  $(msgSel).innerHTML = '<span class="okmsg">Added ✓</span> <a href="#" data-go="events" style="color:var(--accent)">See how it\'s doing →</a>';
+  await reloadEvents();
+}
+
+async function reloadEvents() {
+  if (!STATIC) S.events = (await (await fetch('api/state')).json()).events;
+  renderEvents();
+}
+
+// ---------- 4. How's my event doing? ----------
+function allEvents() { return [...S.events, ...(STATIC ? localEvents() : [])]; }
+
+function pickEventClient(events, q) {
+  const words = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !['how', 'the', 'doing', 'event', 'is', 'my', 'our', 'what', 'about'].includes(w));
+  let best = null, score = 0;
+  for (const e of events) {
+    const hay = `${e.title} ${e.city} ${e.platform}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const s = words.filter((w) => hay.includes(w)).length;
+    if (s > score) { best = e; score = s; }
+  }
+  return best ?? events.at(-1);
+}
+
+function eventCard(e) {
+  const last = e.checks?.at(-1);
+  const canCheck = !STATIC && !e.fromAudit && (S.liveAuditAvailable || (e.eventbriteId && S.publishAvailable?.eventbrite));
+  return `<div class="task" id="ev-${esc(e.id)}"><div class="head" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <span class="t">${esc(e.title)}</span><span class="small muted">${esc(e.platform)}${e.city ? ' · ' + esc(e.city) : ''}</span></div>
+    ${e.note ? `<p class="small muted" style="margin:4px 0">${esc(e.note)}</p>` : ''}
+    <p style="margin:8px 0">${esc(e.report)} ${last ? (last.label === 'REAL' ? MEASURED : ESTIMATE) : ''}</p>
+    ${e.stats ? `<div class="grid" style="margin:8px 0"><div class="card"><h3>Registered on Eventbrite ${MEASURED}</h3><div class="big">${e.stats.registered}<small>${e.stats.capacity ? ' of ' + e.stats.capacity : ''}</small></div></div></div>` : ''}
+    ${last ? `<details><summary class="small">The questions we checked (${last.results.length})</summary><table>${last.results.map((r) => `<tr><td>${esc(r.query)}</td><td class="${r.found ? 'yes' : 'no'}">${r.found ? 'Pointed to it' + (r.rank ? ` (#${r.rank})` : '') : 'Not found'}</td></tr>`).join('')}</table></details>`
+      : e.questions?.length ? `<details><summary class="small">Questions Visible will ask</summary><ul class="small">${e.questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ul></details>` : ''}
+    <div class="btnrow">${e.url ? `<a class="ghost" href="${esc(e.url)}" target="_blank" rel="noopener">Open listing</a>` : ''}
+      ${e.fromAudit ? '' : `<button class="ghost" data-check="${esc(e.id)}" ${canCheck ? '' : 'disabled'}>Check now</button>`}
+      <span class="small muted" id="cm-${esc(e.id)}">${e.fromAudit || canCheck ? '' : STATIC ? 'Checking runs in the full version.' : 'Checking needs an AI account key on the server.'}</span></div></div>`;
+}
+
+function renderEvents() {
+  const evs = allEvents();
+  $('#events').innerHTML = `
+    <p class="lead">Posted an event? Ask Visible how it's doing. It asks a chatbot the questions a newcomer in that city would ask, and tells you whether the chatbot sends people to your event. For Eventbrite events, it also shows how many people registered.</p>
+    <div class="card"><h3>Ask Visible</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="eq" placeholder="e.g. how is the Québec retreat listing doing?"><button class="primary" id="ego">Ask</button></div>
+      <div id="eout" style="margin-top:10px"></div></div>
+    <h2>Events we're tracking</h2>
+    ${evs.length ? evs.slice().reverse().map(eventCard).join('') : '<p class="muted">Nothing yet. Post one in "Post an event", or add a link below.</p>'}
+    <details><summary>Add an event you already posted</summary><div class="card"><div class="form">
+      <label class="f">Event name<input id="aname" placeholder="e.g. Breath & Meditation Intro, Calgary"></label>
+      <label class="f">Link<input id="aurl" placeholder="https://..."></label>
+      <label class="f">City<input id="acity" placeholder="Calgary"></label>
+      <label class="f">Program<select id="aprog">${S.catalog.programs.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>
+    </div><div class="btnrow"><button class="primary" id="ago">Track it</button><span class="small" id="amsg"></span></div></div></details>`;
+  const askEv = () => {
+    const e = pickEventClient(allEvents(), $('#eq').value || '');
+    $('#eout').innerHTML = e ? `<p style="margin:0"><b>${esc(e.title)}</b>: ${esc(e.report)}</p><p class="small"><a href="#ev-${esc(e.id)}" style="color:var(--accent)">See the details below</a></p>` : '<p class="muted">No events tracked yet.</p>';
+  };
+  $('#ego').addEventListener('click', askEv);
+  $('#eq').addEventListener('keydown', (e) => e.key === 'Enter' && askEv());
+  $('#ago').addEventListener('click', () => {
+    const c = S.cities.find((x) => x.city === $('#acity').value.trim());
+    addEvent({ title: $('#aname').value.trim(), url: $('#aurl').value.trim(), city: $('#acity').value.trim(), province: c?.province ?? '', programId: $('#aprog').value }, '#amsg');
+  });
+  $('#events').querySelectorAll('[data-check]').forEach((b) => b.addEventListener('click', async () => {
+    const id = b.dataset.check; b.disabled = true; $('#cm-' + id).textContent = 'Asking the questions… this takes a minute or two.';
+    const r = await fetch(`api/events/${id}/check`, { method: 'POST' });
+    const j = await r.json();
+    if (!r.ok) { $('#cm-' + id).innerHTML = `<span class="errmsg">${esc(j.error)}</span>`; b.disabled = false; return; }
+    await reloadEvents();
+  }));
+}
+
 async function load() {
   S = await (await fetch(STATIC ? 'state.json' : 'api/state')).json();
-  renderAudit(); renderLift(); renderFixes(); renderFeed(); renderRetest();
+  renderAudit(); renderLift(); renderPost(); renderEvents(); renderFixes(); renderFeed(); renderRetest();
+  $('#citypick')?.addEventListener('change', (e) => ($('#cityopen').href = `report/${e.target.value}.html`));
 }
 load();
 </script>

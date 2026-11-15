@@ -11,6 +11,7 @@ const domainOf = (url) => {
 // Pull search-result domains and the answer text out of a Messages API response.
 export function parseClaudeResponse(message) {
   const domains = [];
+  const urls = [];
   let text = '';
   const cited = [];
   for (const block of message.content ?? []) {
@@ -18,7 +19,7 @@ export function parseClaudeResponse(message) {
       for (const r of block.content) {
         if (r.type === 'web_search_result') {
           const d = domainOf(r.url);
-          if (d) domains.push(d);
+          if (d) { domains.push(d); urls.push(r.url); }
         }
       }
     }
@@ -35,6 +36,7 @@ export function parseClaudeResponse(message) {
   const citedOwn = cited.some(isOwn);
   return {
     resultDomains: domains.slice(0, 10),
+    resultUrls: urls.slice(0, 10),
     citedDomains: [...new Set(cited)],
     ownRank: ownIdx >= 0 && ownIdx < 10 ? ownIdx + 1 : null,
     mentionedInAnswer,
